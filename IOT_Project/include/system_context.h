@@ -11,11 +11,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
-
+#include <Preferences.h>
 typedef enum { STATE_NORMAL = 0, STATE_WARNING, STATE_CRITICAL } DisplayState;
 
 typedef struct {
   // Hardware objects (allocated in main)
+  Adafruit_NeoPixel* pixels_task1;
   Adafruit_NeoPixel* pixels;
   DHT20* dht;
   LiquidCrystal_I2C* lcd;
@@ -34,7 +35,7 @@ typedef struct {
   SemaphoreHandle_t lcdMutex;
   SemaphoreHandle_t sensorMutex;
   SemaphoreHandle_t neoSem;
-
+  SemaphoreHandle_t ledNeoSem;
   // new: semaphore to indicate control command available
   SemaphoreHandle_t controlSem;
 
@@ -67,13 +68,11 @@ typedef struct {
   // coreiot token if needed
   String coreToken;
 
-  // fan info
-  uint8_t fanSpeed;  // 0..255
-  bool controlFan;
+
 } SystemContext;
 
 typedef struct {
-  uint8_t device; // 0: all off,1: led blink toggle,2: neo toggle (not used),3: relay toggle,4: toggle blink,5: set fan speed
+  uint8_t device; // 0: all off,1: led blink toggle,2: neo toggle (not used),3: relay toggle,4: toggle blink.
   bool on;
-  int param;      // used for fan speed
+  int param;
 } ControlMsg;

@@ -1,9 +1,16 @@
+// src/task6_coreiot.cpp
 #include "task6_coreiot.h"
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <Arduino.h>
 #include "config.h"
+
+/*
+  Task6 - CoreIOT MQTT publish
+  - mqtt_publish_telemetry now includes "longitude" and "latitude"
+  - Uses ctx->mqttClient (PubSubClient)
+*/
 
 void mqtt_init(SystemContext* ctx) {
   if (!ctx) return;
@@ -36,10 +43,18 @@ void mqtt_publish_telemetry(SystemContext* ctx, float t, float h) {
     mqtt_ensure_connected(ctx);
     if (!ctx->mqttClient->connected()) { Serial.println("[MQTT] not connected, skip publish"); return; }
   }
-  DynamicJsonDocument doc(256);
+
+  // increase JSON buffer slightly to hold extra numeric fields
+  DynamicJsonDocument doc(512);
   doc["temperature"] = t;
   doc["humidity"] = h;
-  String payload; serializeJson(doc, payload);
+  // add location fields (double precision)
+  doc["longitude"] = DEVICE_LONGITUDE;
+  doc["latitude"]  = DEVICE_LATITUDE;
+
+  String payload;
+  serializeJson(doc, payload);
+
   const char* topic = "v1/devices/me/telemetry";
   bool ok = ctx->mqttClient->publish(topic, payload.c_str());
   Serial.printf("[MQTT] publish telemetry ok=%d payload=%s\n", ok, payload.c_str());

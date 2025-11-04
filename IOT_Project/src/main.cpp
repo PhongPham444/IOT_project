@@ -24,8 +24,19 @@ void setup() {
     for(;;) vTaskDelay(pdMS_TO_TICKS(1000));
   }
   memset(ctx, 0, sizeof(SystemContext));
-
+  Preferences prefs;
+  if (prefs.begin("wifi", true)) { // read-only namespace
+    String saved_ssid = prefs.getString("ssid", "");
+    String saved_pass = prefs.getString("pass", "");
+    prefs.end();
+    if (saved_ssid.length() > 0) {
+      ctx->wifiSsid = saved_ssid;
+      ctx->wifiPass = saved_pass;
+      Serial.printf("[MAIN] Loaded saved WiFi SSID from NVS: %s\n", saved_ssid.c_str());
+    }
+  }
   // allocate hardware objects
+  ctx->pixels_task1 = new Adafruit_NeoPixel(LED_COUNT, PIN_LED_BLINK, NEO_GRB + NEO_KHZ800);
   ctx->pixels = new Adafruit_NeoPixel(NEO_COUNT, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
   ctx->dht = new DHT20();
   ctx->lcd = new LiquidCrystal_I2C(0x21, 16, 2);
@@ -44,12 +55,12 @@ void setup() {
   ctx->humidSem = xSemaphoreCreateBinary();
   ctx->displaySem = xSemaphoreCreateBinary();
   ctx->publishSem = xSemaphoreCreateBinary();
+  ctx->ledNeoSem = xSemaphoreCreateMutex();
   ctx->neopixelMutex = xSemaphoreCreateMutex();
   ctx->lcdMutex = xSemaphoreCreateMutex();
   ctx->sensorMutex = xSemaphoreCreateMutex();
   ctx->neoSem = xSemaphoreCreateBinary();
   ctx->controlSem = xSemaphoreCreateBinary();
-
   // create queues
   ctx->displayQueue = xQueueCreate(4, sizeof(DisplayState));
   ctx->controlQueue = xQueueCreate(8, sizeof(ControlMsg));
@@ -61,33 +72,54 @@ void setup() {
 
   ctx->neo_r = ctx->neo_g = ctx->neo_b = 0;
 
-  // fan initial state
-  ctx->fanSpeed = 0;
-  ctx->controlFan = false;
-
   // initialize modules (sensors, lcd, neo, mqtt)
+  led_neo_init(ctx);  // begin pixels_task1
   dht_lcd_init(ctx);   // begins Wire, dht, lcd
   neo_init(ctx);       // begin neopixels
   mqtt_init(ctx);      // create mqtt client objects (does not connect yet)
 
-  // Fan pin: use analogWrite like your original sample (no ledc setup)
-  pinMode(FAN_PIN, OUTPUT);
-  analogWrite(FAN_PIN, 0); // ensure off
-
   // wifi AP + attempt STA if provided
+  // --- Start AP (always) and print AP IP so user can connect and configure STA ---
   WiFi.mode(WIFI_MODE_APSTA);
   WiFi.softAP(AP_SSID, AP_PASS);
+  IPAddress apIP = WiFi.softAPIP();
   Serial.printf("AP started: %s\n", AP_SSID);
-  Serial.printf("AP IP: %s\n", WiFi.softAPIP().toString().c_str());
+  Serial.printf("AP IP: %s\n", apIP.toString().c_str());
+  Serial.printf("Connect to SSID '%s' (password '%s') and open http://%s/ to configure WiFi\n",
+                AP_SSID, AP_PASS, apIP.toString().c_str());
 
-  if (strlen(DEFAULT_WLAN_SSID) > 0) {
-    WiFi.begin(DEFAULT_WLAN_SSID, DEFAULT_WLAN_PASS);
+  // --- Try STA if a default is provided in config or if user already filled ctx->wifiSsid
+  // If neither exists, we skip STA attempt and let web UI (/wifi) collect credentials.
+  if ( (ctx->wifiSsid.length() > 0) || (strlen(DEFAULT_WLAN_SSID) > 0) ) {
+    const char* trySsid = nullptr;
+    const char* tryPass = nullptr;
+    if (ctx->wifiSsid.length() > 0) {
+      trySsid = ctx->wifiSsid.c_str();
+      tryPass = ctx->wifiPass.c_str();
+      Serial.printf("[WIFI] Attempting STA using saved credentials from context: %s\n", trySsid);
+    } else {
+      trySsid = DEFAULT_WLAN_SSID;
+      tryPass = DEFAULT_WLAN_PASS;
+      Serial.printf("[WIFI] Attempting STA using DEFAULT_WLAN_SSID: %s\n", trySsid);
+    }
+
+    WiFi.begin(trySsid, tryPass);
     Serial.print("Trying STA connect");
-    for (int i=0;i<20 && WiFi.status() != WL_CONNECTED; ++i) { Serial.print("."); delay(300); }
+    // short blocking attempt (non-blocking overall app, just quick try)
+    for (int i = 0; i < 20 && WiFi.status() != WL_CONNECTED; ++i) {
+      Serial.print(".");
+      vTaskDelay(pdMS_TO_TICKS(300));
+    }
     Serial.println();
-    if (WiFi.status() == WL_CONNECTED) Serial.printf("STA IP: %s\n", WiFi.localIP().toString().c_str());
-    else Serial.println("STA not connected (TaskCoreIOT will retry).");
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.printf("STA IP: %s (connected to %s)\n", WiFi.localIP().toString().c_str(), WiFi.SSID().c_str());
+    } else {
+      Serial.println("STA not connected (will retry in background tasks or use web UI to set credentials).");
+    }
+  } else {
+    Serial.println("No STA configured (DEFAULT_WLAN_SSID empty and ctx->wifiSsid not set). Waiting for user to configure via AP web UI.");
   }
+
 
   // relay pin init
   pinMode(PIN_RELAY, OUTPUT);
@@ -115,7 +147,11 @@ void setup() {
 
 void loop() {
   // everything runs in FreeRTOS tasks
-  // print current IP every 10 seconds for quick monitoring
-  Serial.printf("Current IP: %s\n", WiFi.localIP().toString().c_str());
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.printf("STA IP: %s (connected to %s)\n", WiFi.localIP().toString().c_str(), WiFi.SSID().c_str());
+  } else {
+    // show AP IP so user knows where to hit the web UI
+    Serial.printf("AP IP: %s  (AP SSID: %s)\n", WiFi.softAPIP().toString().c_str(), AP_SSID);
+  }
   vTaskDelay(pdMS_TO_TICKS(10000));
 }
