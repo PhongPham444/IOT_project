@@ -6,9 +6,14 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <DNSServer.h>
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <Update.h>
+
+// DNS server for captive portal
+static DNSServer dnsServer;
+static const byte DNS_PORT = 53;
 
 // ---------------- HTML root with professional dashboard ----------------
 static void handle_root(SystemContext* ctx) {
@@ -559,6 +564,19 @@ static void handle_ota_upload(SystemContext* ctx) {
   }
 }
 
+// ---------------- Captive Portal Handler ----------------
+static void handle_captive(SystemContext* ctx) {
+  // Redirect all requests to root
+  String host = ctx->server->hostHeader();
+  if (host.indexOf(WiFi.softAPIP().toString()) < 0) {
+    // If not accessing by IP, redirect
+    ctx->server->sendHeader("Location", "http://" + WiFi.softAPIP().toString(), true);
+    ctx->server->send(302, "text/plain", "");
+  } else {
+    handle_root(ctx);
+  }
+}
+
 // ---------------- register routes ----------------
 void web_setup_routes(SystemContext* ctx) {
   ctx->server->on("/", [ctx]() { handle_root(ctx); });
@@ -587,7 +605,14 @@ void web_setup_routes(SystemContext* ctx) {
     handle_ota_upload(ctx);
   });
 
+  // Captive portal catch-all - must be last
+  ctx->server->onNotFound([ctx]() { handle_captive(ctx); });
+
+  // Start DNS server for captive portal
+  dnsServer.start(DNS_PORT, "*", WiFi.softAPIP());
+
   ctx->server->begin();
+  Serial.println("[Captive Portal] DNS and Web server started");
 }
 
 // ---------------- TaskControlConsumer (unchanged except fan removed) ----------------
@@ -644,6 +669,9 @@ void TaskServer(void* pv) {
   if (!ctx) vTaskDelete(NULL);
   const TickType_t tick = pdMS_TO_TICKS(10);
   for (;;) {
+    // Process DNS requests for captive portal
+    dnsServer.processNextRequest();
+    // Handle web requests
     if (ctx->server) ctx->server->handleClient();
     vTaskDelay(tick);
   }
