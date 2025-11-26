@@ -223,7 +223,7 @@ static void handle_root(SystemContext* ctx) {
           // AI Output
           const aiVal = d.aiOutput !== undefined ? d.aiOutput : 0;
           document.getElementById('aiOutput').innerText = aiVal.toFixed(3);
-          document.getElementById('aiPrediction').innerText = aiVal > 0.5 ? 'WATER NEEDED' : 'OK';
+          document.getElementById('aiPrediction').innerText = aiVal > 0.16 ? 'HEATING ON' : 'HEATING OFF';
           
           // Update gauges
           document.getElementById('lightGauge').style.width = ((d.light || 0) * 100) + '%';
@@ -257,42 +257,100 @@ static void handle_root(SystemContext* ctx) {
     </script>
     </head>
     <body>
-      <div class="container">
-        <h1>YoloUNO Control Panel</h1>
-        <div class="content">
-          <div class="col">
-            <div class="data">
-              <div class="row"><span class="stat-label">Temperature:</span>
-                <span id="temperatureBox" class="value-box" style="background:#666"><span id="temperature">-- °C</span><br><small id="tempState" style="font-size:11px;opacity:0.9">---</small></span>
-              </div>
-              <div class="row"><span class="stat-label">Humidity:</span>
-                <span id="humidityBox" class="value-box" style="background:#666"><span id="humidity">-- %</span><br><small id="humState" style="font-size:11px;opacity:0.9">---</small></span>
-              </div>
-              <div class="row"><span>Relay:</span><span id="relayState">--</span></div>
-              <div class="row"><span>Blink LED:</span><span id="blinkState">--</span></div>
-              <div class="small">Network: <span id="netInfo">--</span></div>
-            </div>
+      <div class="dashboard">
+        <div class="header">
+          <h1>🌱 IoT Smart Agriculture Dashboard</h1>
+          <div class="network-badge" id="netInfo">--</div>
+        </div>
 
-            <div style="margin-top:12px;text-align:center">
-              <div class="small">Color picker (manual override NeoPixel)</div>
-              <div class="colorRow">
-                <input type="color" id="colorpicker" value="#ff0000" onchange="setColorFromPicker()">
-                <button class="btn off" onclick="toggleDevice('off')">Turn Off LEDs</button>
+        <!-- Sensor Data Grid -->
+        <div class="grid">
+          <div class="card">
+            <div class="card-title">🌡️ Temperature</div>
+            <div class="sensor-value"><span id="temperature">--</span>°C</div>
+            <div class="status-badge" id="tempState" style="background:#4CAF50;color:white">---</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">💧 Humidity</div>
+            <div class="sensor-value"><span id="humidity">--</span>%</div>
+            <div class="status-badge" id="humState" style="background:#4CAF50;color:white">---</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">☀️ Light Intensity</div>
+            <div class="sensor-value"><span id="light">--</span>%</div>
+            <div class="gauge-container">
+              <div class="gauge-bar">
+                <div class="gauge-fill light" id="lightGauge" style="width:0%"></div>
               </div>
-              <div class="legend">Temp colors: <span style="display:inline-block;width:14px;height:10px;background:#4CAF50;margin:0 6px;border-radius:2px"></span>NOR <span style="display:inline-block;width:14px;height:10px;background:#FFC107;margin:0 6px;border-radius:2px"></span>WAR <span style="display:inline-block;width:14px;height:10px;background:#F44336;margin:0 6px;border-radius:2px"></span>CRI</div>
-              <div class="legend">Hum colors: <span style="display:inline-block;width:14px;height:10px;background:#4CAF50;margin:0 6px;border-radius:2px"></span>NOR <span style="display:inline-block;width:14px;height:10px;background:#FFC107;margin:0 6px;border-radius:2px"></span>WAR <span style="display:inline-block;width:14px;height:10px;background:#F44336;margin:0 6px;border-radius:2px"></span>CRI</div>
-              <div class="small">To configure WiFi: visit <a href="/wifi">/wifi</a></div>
-              <div class="small"><a href="/ota">Firmware OTA</a> (use with care)</div>
+              <div class="gauge-label">
+                <span>Dark</span>
+                <span>Bright</span>
+              </div>
             </div>
           </div>
 
-          <div class="col controls">
-            <button class="btn red" onclick="toggleDevice('redLED')">Red</button>
-            <button class="btn blue" onclick="toggleDevice('blueLED')">Blue</button>
-            <button class="btn green" onclick="toggleDevice('greenLED')">Green</button>
-            <button class="btn relay" onclick="toggleDevice('relay')">Toggle Relay</button>
-            <button class="btn blink" onclick="toggleDevice('blink')">Toggle Blink LED</button>
+          <div class="card">
+            <div class="card-title">💦 Soil Moisture</div>
+            <div class="sensor-value"><span id="moisture">--</span>%</div>
+            <div class="gauge-container">
+              <div class="gauge-bar">
+                <div class="gauge-fill moisture" id="moistureGauge" style="width:0%"></div>
+              </div>
+              <div class="gauge-label">
+                <span>Dry</span>
+                <span>Wet</span>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <!-- AI Prediction Card -->
+        <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+          <div class="card-title" style="color: rgba(255,255,255,0.9)">🤖 AI Heating Control</div>
+          <div class="sensor-value" style="color: white">
+            <span id="aiOutput">0.000</span>
+            <span style="font-size:20px; margin-left:15px; opacity:0.9" id="aiPrediction">--</span>
+          </div>
+          <div class="gauge-container">
+            <div class="gauge-bar" style="background:rgba(255,255,255,0.3)">
+              <div class="gauge-fill ai" id="aiGauge" style="width:0%; background:rgba(255,255,255,0.9)"></div>
+            </div>
+            <div class="gauge-label" style="color:rgba(255,255,255,0.9)">
+              <span>Heating Off</span>
+              <span>Heating On</span>
+            </div>
+          </div>
+          <div class="sensor-label" style="color:rgba(255,255,255,0.8); margin-top:10px">
+            Model: TensorFlow Lite | Threshold: >0.16 | Inputs: Temp, Humidity, Moisture, Light
+          </div>
+        </div>
+
+        <!-- Control Section -->
+        <div class="control-section">
+          <div class="control-title">🎮 Device Controls</div>
+          <div class="button-grid">
+            <button class="btn red" onclick="toggleDevice('redLED')">Red LED</button>
+            <button class="btn blue" onclick="toggleDevice('blueLED')">Blue LED</button>
+            <button class="btn green" onclick="toggleDevice('greenLED')">Green LED</button>
+            <button class="btn relay" onclick="toggleDevice('relay')">Relay: <span id="relayState">--</span></button>
+            <button class="btn blink" onclick="toggleDevice('blink')">Blink: <span id="blinkState">--</span></button>
+            <button class="btn off" onclick="toggleDevice('off')">All Off</button>
+          </div>
+
+          <div class="color-picker-section">
+            <input type="color" id="colorpicker" value="#ff0000" onchange="setColorFromPicker()">
+            <div>
+              <div style="font-weight:600; margin-bottom:5px">Custom NeoPixel Color</div>
+              <div style="font-size:13px; color:#7f8c8d">Pick any color to override automatic mode</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div>Configure WiFi: <a href="/wifi">/wifi</a> | Firmware Update: <a href="/ota">/ota</a></div>
+          <div style="margin-top:8px">YoloUNO Smart Agriculture System | Powered by ESP32 + TensorFlow Lite</div>
         </div>
       </div>
     </body>
@@ -302,12 +360,18 @@ static void handle_root(SystemContext* ctx) {
   ctx->server->send(200, "text/html", html);
 }
 
-// ---------------- /update JSON (no fan) ----------------
+// ---------------- /update JSON with sensor and AI data ----------------
 static void handle_update(SystemContext* ctx) {
   float t = 0.0f, h = 0.0f;
+  float light = 0.0f, moisture = 0.0f;
+  float aiOutput = 0.0f;
+  
   if (xSemaphoreTake(ctx->sensorMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
     t = ctx->latestTemp;
     h = ctx->latestHumid;
+    light = ctx->latestLight;
+    moisture = ctx->latestMoisture;
+    aiOutput = ctx->latestAIOutput;
     xSemaphoreGive(ctx->sensorMutex);
   }
 
@@ -330,10 +394,13 @@ static void handle_update(SystemContext* ctx) {
   if (WiFi.status() == WL_CONNECTED) net = "STA:" + WiFi.SSID() + " IP:" + WiFi.localIP().toString();
   else net = "AP IP:" + WiFi.softAPIP().toString();
 
-  // Build JSON (manual string assembly to avoid heavy libs)
+  // Build JSON with all sensor data
   String j = "{";
   j += "\"temperature\":" + String(t,2) + ",";
   j += "\"humidity\":" + String(h,2) + ",";
+  j += "\"light\":" + String(light,4) + ",";
+  j += "\"moisture\":" + String(moisture,4) + ",";
+  j += "\"aiOutput\":" + String(aiOutput,4) + ",";
   j += "\"relay\":" + String((int)ctx->overrideRelay) + ",";
   j += "\"blink\":" + String((int)ctx->overrideLed) + ",";
   j += "\"tempState\":\"" + tempState + "\",";
