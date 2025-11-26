@@ -3,14 +3,14 @@
 // hardware pins
 #define PIN_LED_BLINK        45
 #define LED_COUNT            1
-#define PIN_NEOPIXEL         8
+#define PIN_NEOPIXEL         6
 #define NEO_COUNT            4
-#define PIN_RELAY            6
+#define PIN_RELAY            8
 
 //define ports
 #define PIN_LIGHT GPIO_NUM_1
 #define PIN_MOISTURE GPIO_NUM_2
-#define PIN_LED GPIO_NUM_6
+#define PIN_LED GPIO_NUM_48
 
 // default STA WiFi (leave empty to skip auto STA)
 #define DEFAULT_WLAN_SSID    ""

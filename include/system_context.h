@@ -49,6 +49,8 @@ typedef struct {
   // analog sensor snapshots (A0, A1) - normalized 0..1
   float latestLight;
   float latestMoisture;
+  // AI model output (TinyML inference result)
+  float latestAIOutput;
 
   // thresholds
   float warnTemp;

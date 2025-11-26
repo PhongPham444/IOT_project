@@ -56,20 +56,26 @@ void TaskTinyML(void *pvParameters)
     {
         float a0 = 0.0f;
         float a1 = 0.0f;
+        float a2 = 0.0f;
+        float a3 = 0.0f;
 
         // If we were given a valid context, read analog snapshot under sensorMutex to get consistent values
         if (ctx && ctx->sensorMutex) {
             if (xSemaphoreTake(ctx->sensorMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
                 a0 = ctx->latestLight;
                 a1 = ctx->latestMoisture;
+                a2 = ctx->latestTemp;
+                a3 = ctx->latestHumid;
                 xSemaphoreGive(ctx->sensorMutex);
             }
         }
 
         // Prepare input data for model (A0, A1)
         // Model expects floats in input tensor; adjust indexing to your model's input shape
-        input->data.f[0] = a0;
-        input->data.f[1] = a1;
+        input->data.f[0] = a2;
+        input->data.f[1] = a3;
+        input->data.f[2] = a1;
+        input->data.f[3] = a0;
 
         // Run inference
         TfLiteStatus invoke_status = interpreter->Invoke();
@@ -85,7 +91,16 @@ void TaskTinyML(void *pvParameters)
         float result = output->data.f[0];
         Serial.print("Inference result: ");
         Serial.println(result);
-        digitalWrite(PIN_LED, result > 0.45 ? HIGH : LOW);
+        
+        // Store result in context for web display
+        if (ctx && ctx->sensorMutex) {
+            if (xSemaphoreTake(ctx->sensorMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+                ctx->latestAIOutput = result;
+                xSemaphoreGive(ctx->sensorMutex);
+            }
+        }
+        
+        digitalWrite(PIN_LED, result > 0.15 ? HIGH : LOW);
         vTaskDelay(pdMS_TO_TICKS(300));
     }
 }

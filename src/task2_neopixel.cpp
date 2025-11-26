@@ -59,9 +59,9 @@ void TaskNeoPixel(void* pv) {
         xSemaphoreGive(ctx->sensorMutex);
       }
 
-      if (h <= 40.0f) {
+      if (h <= 60.0f) {
         neo_safe_set(ctx, make_color(ctx, 0, 0, 255)); // blue
-      } else if (h <= 60.0f) {
+      } else if (h <= 70.0f) {
         neo_safe_set(ctx, make_color(ctx, 0, 255, 0)); // green
       } else if (h <= 80.0f) {
         blinkState = !blinkState;

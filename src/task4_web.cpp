@@ -10,29 +10,192 @@
 #include <Preferences.h>
 #include <Update.h>
 
-// ---------------- HTML root with color picker (no fan) ----------------
+// ---------------- HTML root with professional dashboard ----------------
 static void handle_root(SystemContext* ctx) {
   String html = R"rawliteral(
-    <!doctype html><html><head><meta charset="utf-8"><title>YoloUNO Control Panel</title>
+    <!doctype html><html><head><meta charset="utf-8"><title>IoT Dashboard - YoloUNO</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <style>
-      body{display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;font-family:Arial,Helvetica,sans-serif;background:#f2f2f2}
-      .container{width:900px;background:#fff;border-radius:10px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,0.12)}
-      h1{margin:0 0 8px 0;font-size:20px;color:#222}
-      .content{display:flex;gap:20px;margin-top:12px}
-      .col{flex:1;min-width:260px}
-      .data{background:#fafafa;border:1px solid #eee;padding:10px;border-radius:6px}
-      .row{display:flex;justify-content:space-between;padding:6px 0;font-size:16px}
-      .value-box{display:inline-block;padding:6px 10px;border-radius:6px;color:#fff;font-weight:600;min-width:90px;text-align:center}
-      .controls{display:flex;flex-direction:column;gap:10px;align-items:center}
-      .btn{width:160px;padding:10px;border-radius:6px;border:none;color:#fff;cursor:pointer;font-weight:600}
-      .btn.red{background:#e53935}.btn.blue{background:#1e88e5}.btn.green{background:#43a047}.btn.off{background:#9e9e9e;color:#222}
-      .btn.relay{background:#fb8c00}.btn.blink{background:#455a64}
-      .small{font-size:13px;color:#666;margin-top:6px}
-      .colorRow{display:flex;gap:10px;align-items:center;margin-top:8px}
-      input[type="color"]{width:56px;height:36px;border:0;padding:0;background:#fff;border-radius:6px}
-      .legend { margin-top:8px; font-size:13px; color:#666 }
-      .stat-label { margin-right: 8px; color:#333; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .dashboard {
+        max-width: 1400px;
+        width: 100%;
+        background: rgba(255,255,255,0.98);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        padding: 30px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e0e0e0;
+      }
+      .header h1 {
+        font-size: 28px;
+        color: #2c3e50;
+        font-weight: 700;
+      }
+      .network-badge {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 25px;
+      }
+      .card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+      .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      }
+      .card-title {
+        font-size: 16px;
+        color: #7f8c8d;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+      }
+      .sensor-value {
+        font-size: 42px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 10px;
+      }
+      .sensor-label {
+        font-size: 14px;
+        color: #95a5a6;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-top: 10px;
+        text-transform: uppercase;
+      }
+      .gauge-container {
+        margin-top: 15px;
+      }
+      .gauge-bar {
+        width: 100%;
+        height: 16px;
+        background: #ecf0f1;
+        border-radius: 10px;
+        overflow: hidden;
+        position: relative;
+      }
+      .gauge-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        border-radius: 10px;
+        transition: width 0.5s ease;
+        position: relative;
+      }
+      .gauge-fill.ai {
+        background: linear-gradient(90deg, #f093fb, #f5576c);
+      }
+      .gauge-fill.light {
+        background: linear-gradient(90deg, #ffd89b, #19547b);
+      }
+      .gauge-fill.moisture {
+        background: linear-gradient(90deg, #a8edea, #fed6e3);
+      }
+      .gauge-label {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 8px;
+        font-size: 13px;
+        color: #7f8c8d;
+      }
+      .control-section {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 20px;
+      }
+      .control-title {
+        font-size: 18px;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        font-weight: 700;
+      }
+      .button-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+      }
+      .btn {
+        padding: 14px;
+        border: none;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        color: white;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+      .btn:active { transform: translateY(0); }
+      .btn.red { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+      .btn.blue { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+      .btn.green { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+      .btn.off { background: linear-gradient(135deg, #868f96 0%, #596164 100%); }
+      .btn.relay { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+      .btn.blink { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+      .color-picker-section {
+        margin-top: 20px;
+        padding: 20px;
+        background: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+      input[type="color"] {
+        width: 60px;
+        height: 60px;
+        border: 3px solid #e0e0e0;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #e0e0e0;
+        color: #7f8c8d;
+        font-size: 13px;
+      }
+      .footer a { color: #667eea; text-decoration: none; font-weight: 600; }
+      .footer a:hover { text-decoration: underline; }
     </style>
     <script>
       function fetchText(path, opts){ return fetch(path, opts).then(r=>r.text()); }
@@ -41,7 +204,7 @@ static void handle_root(SystemContext* ctx) {
         fetchText('/setColor?r='+r+'&g='+g+'&b='+b).then(t=>console.log('setColor',t)).catch(e=>console.error(e));
       }
       function setColorFromPicker(){
-        const hex = document.getElementById('colorpicker').value; // "#RRGGBB"
+        const hex = document.getElementById('colorpicker').value;
         const r = parseInt(hex.slice(1,3),16);
         const g = parseInt(hex.slice(3,5),16);
         const b = parseInt(hex.slice(5,7),16);
@@ -49,41 +212,47 @@ static void handle_root(SystemContext* ctx) {
       }
       function updateStatus(){
         fetch('/update').then(r=>r.json()).then(d=>{
-          // numerical values
-          document.getElementById('temperature').innerText = (d.temperature!==undefined? d.temperature.toFixed(1): '--') + ' °C';
-          document.getElementById('humidity').innerText = (d.humidity!==undefined? d.humidity.toFixed(1): '--') + ' %';
-          // set background color based on provided color fields (hex)
-          if (d.tempColor) {
-            const el = document.getElementById('temperatureBox');
-            el.style.backgroundColor = d.tempColor;
-            // ensure text color contrast for dark/light backgrounds:
-            el.style.color = (isLightColor(d.tempColor) ? '#222' : '#fff');
+          // Temperature & Humidity
+          document.getElementById('temperature').innerText = (d.temperature!==undefined? d.temperature.toFixed(1): '--');
+          document.getElementById('humidity').innerText = (d.humidity!==undefined? d.humidity.toFixed(1): '--');
+          
+          // Light & Moisture
+          document.getElementById('light').innerText = (d.light!==undefined? (d.light*100).toFixed(1): '--');
+          document.getElementById('moisture').innerText = (d.moisture!==undefined? (d.moisture*100).toFixed(1): '--');
+          
+          // AI Output
+          const aiVal = d.aiOutput !== undefined ? d.aiOutput : 0;
+          document.getElementById('aiOutput').innerText = aiVal.toFixed(3);
+          document.getElementById('aiPrediction').innerText = aiVal > 0.5 ? 'WATER NEEDED' : 'OK';
+          
+          // Update gauges
+          document.getElementById('lightGauge').style.width = ((d.light || 0) * 100) + '%';
+          document.getElementById('moistureGauge').style.width = ((d.moisture || 0) * 100) + '%';
+          document.getElementById('aiGauge').style.width = (aiVal * 100) + '%';
+          
+          // Temperature state badge
+          if (d.tempState) {
+            const badge = document.getElementById('tempState');
+            badge.innerText = d.tempState;
+            badge.style.background = d.tempColor || '#4CAF50';
           }
-          if (d.humColor) {
-            const el2 = document.getElementById('humidityBox');
-            el2.style.backgroundColor = d.humColor;
-            el2.style.color = (isLightColor(d.humColor) ? '#222' : '#fff');
+          
+          // Humidity state badge
+          if (d.humState) {
+            const badge = document.getElementById('humState');
+            badge.innerText = d.humState;
+            badge.style.background = d.humColor || '#4CAF50';
           }
-          // states (text)
-          if (d.tempState) document.getElementById('tempState').innerText = d.tempState;
-          if (d.humState) document.getElementById('humState').innerText = d.humState;
 
+          // Control states
           document.getElementById('relayState').innerText = d.relay ? 'ON' : 'OFF';
           document.getElementById('blinkState').innerText = d.blink ? 'ON' : 'OFF';
+          
+          // Network info
           if (d.network) document.getElementById('netInfo').innerText = d.network;
         }).catch(e=>console.error('update failed',e));
       }
-      // simple luminance check to choose text color
-      function isLightColor(hex){
-        if (!hex || hex[0] !== '#') return false;
-        const r = parseInt(hex.slice(1,3),16);
-        const g = parseInt(hex.slice(3,5),16);
-        const b = parseInt(hex.slice(5,7),16);
-        // relative luminance
-        const lum = 0.2126*r + 0.7152*g + 0.0722*b;
-        return lum > 150;
-      }
-      setInterval(updateStatus,1000);
+      setInterval(updateStatus, 1000);
       window.onload = updateStatus;
     </script>
     </head>

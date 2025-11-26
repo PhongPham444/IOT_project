@@ -50,7 +50,7 @@ void setup() {
 
   // default thresholds
   ctx->warnTemp = 30.0f;
-  ctx->critTemp = 40.0f;
+  ctx->critTemp = 32.0f;
 
   // create semaphores/mutexes
   ctx->tempSem = xSemaphoreCreateBinary();
