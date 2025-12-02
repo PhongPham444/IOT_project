@@ -38,6 +38,7 @@ typedef struct {
   SemaphoreHandle_t ledNeoSem;
   // new: semaphore to indicate control command available
   SemaphoreHandle_t controlSem;
+  SemaphoreHandle_t ledControlSem;
 
   // queues
   QueueHandle_t displayQueue;
@@ -60,6 +61,8 @@ typedef struct {
   bool overrideLed;
   bool overrideNeo;
   bool overrideRelay;
+  // CoreIOT LED control state (on/off from MQTT)
+  bool coreiotLedOn;
 
   // manual neo color
   uint8_t neo_r;
