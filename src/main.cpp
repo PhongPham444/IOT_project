@@ -142,7 +142,7 @@ void setup() {
   xTaskCreate(TaskLCDDisplay, "TaskLCD", 3072, ctx, 4, NULL);
   xTaskCreate(TaskLight,"TaskLight", 2048, ctx, 2, NULL);
   xTaskCreate(TaskMoisture,"TaskMoisture",2048, ctx, 2, NULL);
-  xTaskCreate(TaskTinyML,"TaskTinyML",8192, ctx,2,NULL);
+  xTaskCreate(TaskTinyML,"TaskTinyML", 8192, ctx,2,NULL);
   // control consumer & networking
   xTaskCreate(TaskControlConsumer, "TaskControl", 3072, ctx, 2, NULL);
   xTaskCreate(TaskCoreIOT, "TaskCoreIOT", 4096, ctx, 2, NULL);

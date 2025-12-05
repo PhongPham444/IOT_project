@@ -228,7 +228,7 @@ static void handle_root(SystemContext* ctx) {
           // AI Output
           const aiVal = d.aiOutput !== undefined ? d.aiOutput : 0;
           document.getElementById('aiOutput').innerText = aiVal.toFixed(3);
-          document.getElementById('aiPrediction').innerText = aiVal > 0.16 ? 'HEATING ON' : 'HEATING OFF';
+          document.getElementById('aiPrediction').innerText = aiVal > 0.4 ? 'HEATING ON' : 'HEATING OFF';
           
           // Update gauges
           document.getElementById('lightGauge').style.width = ((d.light || 0) * 100) + '%';
@@ -328,7 +328,7 @@ static void handle_root(SystemContext* ctx) {
             </div>
           </div>
           <div class="sensor-label" style="color:rgba(255,255,255,0.8); margin-top:10px">
-            Model: TensorFlow Lite | Threshold: >0.16 | Inputs: Temp, Humidity, Moisture, Light
+            Model: TensorFlow Lite | Threshold: >0.4 | Inputs: Temp, Humidity, Moisture, Light
           </div>
         </div>
 
@@ -577,10 +577,25 @@ static void handle_captive(SystemContext* ctx) {
   }
 }
 
+// ---------------- Logo handler ----------------
+static void handle_logo(SystemContext* ctx) {
+  // Simple 1x1 transparent PNG (placeholder - replace with actual logo data)
+  static const uint8_t logo_png[] = {
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00,
+    0x0A, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00,
+    0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49,
+    0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+  };
+  ctx->server->send_P(200, "image/png", (const char*)logo_png, sizeof(logo_png));
+}
+
 // ---------------- register routes ----------------
 void web_setup_routes(SystemContext* ctx) {
   ctx->server->on("/", [ctx]() { handle_root(ctx); });
   ctx->server->on("/update", [ctx]() { handle_update(ctx); });
+  ctx->server->on("/logo.png", [ctx]() { handle_logo(ctx); });
 
   ctx->server->on("/wifi", HTTP_GET, [ctx]() { handle_wifi_get(ctx); });
   ctx->server->on("/wifi", HTTP_POST, [ctx]() { handle_wifi_post(ctx); });

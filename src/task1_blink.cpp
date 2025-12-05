@@ -125,7 +125,8 @@ void TaskBlink(void* pv) {
         if (xSemaphoreTake(ctx->tempSem, 0) == pdTRUE) {
           float t = 0.0f;
           if (xSemaphoreTake(ctx->sensorMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            t = ctx->latestTemp; xSemaphoreGive(ctx->sensorMutex);
+            t = ctx->latestTemp; 
+            xSemaphoreGive(ctx->sensorMutex);
           }
           if (t >= ctx->critTemp) curState = STATE_CRITICAL;
           else if (t >= ctx->warnTemp) curState = STATE_WARNING;
@@ -148,7 +149,8 @@ void TaskBlink(void* pv) {
       if (xSemaphoreTake(ctx->tempSem, 0) == pdTRUE) {
         float t = 0.0f;
         if (xSemaphoreTake(ctx->sensorMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-          t = ctx->latestTemp; xSemaphoreGive(ctx->sensorMutex);
+          t = ctx->latestTemp; 
+          xSemaphoreGive(ctx->sensorMutex);
         }
         if (t >= ctx->critTemp) curState = STATE_CRITICAL;
         else if (t >= ctx->warnTemp) curState = STATE_WARNING;

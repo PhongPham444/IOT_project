@@ -7,7 +7,7 @@ void TaskLight(void *parameter){
     SystemContext* ctx = (SystemContext*) parameter;
     while (1){
         int raw0 = analogRead(PIN_LIGHT);
-        float light = raw0 / 8000.0f;
+        float light = raw0/7000.0f;
         Serial.print("Light raw: ");
         Serial.print(raw0);
         Serial.print(" normalized: ");
@@ -29,7 +29,7 @@ void TaskMoisture(void *parameter){
     SystemContext* ctx = (SystemContext*) parameter;
     while (1){
         int raw1 = analogRead(PIN_MOISTURE);
-        float moisture = raw1 / 3000.0f; // keep original scaling
+        float moisture = (raw1 +100)/3000.0f; // keep original scaling
         Serial.print("Moisture raw: ");
         Serial.print(raw1);
         Serial.print(" normalized: ");
