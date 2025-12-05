@@ -30,9 +30,9 @@ void neo_safe_set(SystemContext* ctx, uint32_t color) {
 /*
  TaskNeoPixel: Auto behavior based on humidity (Task 2)
  - humidity ranges:
-   <=40 -> BLUE steady
-   41..60 -> GREEN steady
-   61..80 -> YELLOW blinking (warning)
+   <=60 -> BLUE steady
+   61..70 -> GREEN steady
+   71..80 -> YELLOW blinking (warning)
    >80 -> RED fast blinking (critical)
  - Uses humidSem to be signaled by sensor task.
  - Sends telemetry via ctx->mqttClient (if connected) for warning/critical.
