@@ -18,12 +18,6 @@ void mqtt_init(SystemContext* ctx) {
   if (!ctx->mqttClient) ctx->mqttClient = new PubSubClient(*ctx->wifiClient);
   ctx->mqttClient->setServer(COREIOT_MQTT_HOST, COREIOT_MQTT_PORT);
   ctx->coreToken = String(COREIOT_MQTT_PASS);
-  
-  // Set MQTT callback for incoming RPC messages from CoreIOT
-  // Using lambda to pass context to callback (PubSubClient doesn't support context directly)
-  ctx->mqttClient->setCallback([ctx](char* topic, byte* payload, unsigned int length) {
-    mqtt_on_message(topic, payload, length, ctx);
-  });
 }
 
 void mqtt_ensure_connected(SystemContext* ctx) {
@@ -66,66 +60,6 @@ void mqtt_publish_telemetry(SystemContext* ctx, float t, float h) {
   Serial.printf("[MQTT] publish telemetry ok=%d payload=%s\n", ok, payload.c_str());
 }
 
-// MQTT message callback for handling incoming RPC commands from CoreIOT
-// Follows CoreIOT RPC pattern: {"method": "setValue", "params": true/false}
-void mqtt_on_message(char* topic, byte* payload, unsigned int length, SystemContext* ctx) {
-  if (!ctx) return;
-  
-  // Parse JSON payload: expect {"method": "setValue", "params": true/false}
-  DynamicJsonDocument doc(256);
-  DeserializationError error = deserializeJson(doc, payload, length);
-  
-  if (error) {
-    Serial.printf("[MQTT] JSON parse error: %s\n", error.c_str());
-    return;
-  }
-
-  // Check if this is a setValue RPC method
-  if (doc.containsKey("method") && strcmp(doc["method"], "setValue") == 0) {
-    if (doc.containsKey("params")) {
-      bool ledOn = doc["params"].as<bool>();
-      
-      // Update CoreIOT LED state under mutex
-      if (ctx->sensorMutex) {
-        if (xSemaphoreTake(ctx->sensorMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-          ctx->coreiotLedOn = ledOn;
-          xSemaphoreGive(ctx->sensorMutex);
-        }
-      }
-      
-      // Apply LED control immediately
-      digitalWrite(PIN_LED, ledOn ? HIGH : LOW);
-      Serial.printf("[MQTT] LED control: %s\n", ledOn ? "ON" : "OFF");
-      
-      // Publish response attributes back to CoreIOT (confirm state)
-      if (ctx->mqttClient && ctx->mqttClient->connected()) {
-        DynamicJsonDocument resp(128);
-        resp["value"] = ledOn;
-        String respPayload;
-        serializeJson(resp, respPayload);
-        ctx->mqttClient->publish("v1/devices/me/attributes", respPayload.c_str());
-        Serial.printf("[MQTT] published LED state response: %s\n", respPayload.c_str());
-      }
-      
-      // Signal Task 5 that LED state has changed via CoreIOT
-      if (ctx->ledControlSem) {
-        xSemaphoreGive(ctx->ledControlSem);
-        Serial.println("[MQTT] signaled ledControlSem for Task 5");
-      }
-    }
-  }
-}
-
-// Subscribe to RPC commands topic on CoreIOT (generic, for all methods)
-void mqtt_subscribe_led_control(SystemContext* ctx) {
-  if (!ctx || !ctx->mqttClient) return;
-  
-  // Subscribe to generic RPC topic (matches CoreIOT Python: v1/devices/me/rpc/request/+)
-  const char* topic = "v1/devices/me/rpc/request/+";
-  bool ok = ctx->mqttClient->subscribe(topic);
-  Serial.printf("[MQTT] subscribe to RPC topic: %s (ok=%d)\n", topic, ok);
-}
-
 /* ---------------- TaskCoreIOT ----------------
    Runs periodic publish and reacts to ctx->publishSem
 */
@@ -159,13 +93,6 @@ void TaskCoreIOT(void* pv) {
     if (WiFi.status() == WL_CONNECTED) {
       mqtt_ensure_connected(ctx);
       mqtt_loop(ctx);
-      
-      // Subscribe to LED control topic after connecting
-      static bool ledSubScribed = false;
-      if (!ledSubScribed && ctx->mqttClient->connected()) {
-        mqtt_subscribe_led_control(ctx);
-        ledSubScribed = true;
-      }
 
       float t = 0.0f, h = 0.0f;
       if (xSemaphoreTake(ctx->sensorMutex, pdMS_TO_TICKS(50)) == pdTRUE) {

@@ -61,7 +61,6 @@ void setup() {
   ctx->sensorMutex = xSemaphoreCreateMutex();
   ctx->neoSem = xSemaphoreCreateBinary();
   ctx->controlSem = xSemaphoreCreateBinary();
-  ctx->ledControlSem = xSemaphoreCreateBinary();
   // create queues
   ctx->displayQueue = xQueueCreate(4, sizeof(DisplayState));
   ctx->controlQueue = xQueueCreate(8, sizeof(ControlMsg));

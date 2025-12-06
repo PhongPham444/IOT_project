@@ -74,7 +74,6 @@ void TaskTinyML(void *pvParameters)
         float a1 = 0.0f;
         float a2 = 0.0f;
         float a3 = 0.0f;
-        bool coreiotLedState = false;
 
         // TEST: Use exact same values as notebook to verify model works
         // If we were given a valid context, read analog snapshot under sensorMutex to get consistent values
@@ -91,8 +90,6 @@ void TaskTinyML(void *pvParameters)
                 a1 = ctx->latestMoisture;
                 a2 = ctx->latestTemp;
                 a3 = ctx->latestHumid;
-                
-                coreiotLedState = ctx->coreiotLedOn;
                 xSemaphoreGive(ctx->sensorMutex);
             }
         }
@@ -158,16 +155,10 @@ void TaskTinyML(void *pvParameters)
             }
         }
         
-        // Apply LED: prioritize CoreIOT control over inference if enabled
-        bool ledFinal = coreiotLedState ? coreiotLedState : (result > 0.4);
+        // Apply LED: based on model inference
+        bool ledFinal = (result > 0.4);
         digitalWrite(PIN_LED, ledFinal ? HIGH : LOW);
         
-        // Optional: wait for CoreIOT LED control semaphore to react to MQTT changes
-        // This provides reactive behavior when LED is controlled from CoreIOT
-        if (ctx && ctx->ledControlSem) {
-            xSemaphoreTake(ctx->ledControlSem, pdMS_TO_TICKS(300));
-        } else {
-            vTaskDelay(pdMS_TO_TICKS(300));
-        }
+        vTaskDelay(pdMS_TO_TICKS(300));
     }
 }
